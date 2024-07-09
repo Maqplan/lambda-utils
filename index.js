@@ -8,7 +8,7 @@ const yaml = require('js-yaml');
 const fs = require('fs');
 const async = require('async');
 
-const AMBIENTE = (process.env.NODE_ENV || process.env.STAGE || "").replace("development", "dev");
+const AMBIENTE = (process.env.LAMBDA_ENV || process.env.NODE_ENV || process.env.STAGE || "").replace("development", "dev");
 
 exports.log = function (info, msg) {
     console.log(msg ? msg : 'Received event:', JSON.stringify(info, null, 2));
@@ -20,11 +20,11 @@ exports.init = function (event, context, waitEventLoop) {
     global.lambdaFunctionName = context.functionName;
 }
 
-exports.montaNomeFuncao = function (servico, funcao, ambiente) {    
+exports.montaNomeFuncao = function (servico, funcao, ambiente) {
     return servico + "-" + (ambiente || AMBIENTE) + "-" + funcao;
 }
 
-exports.invokeLambdaServico = function(servico, funcao, payload, callback){
+exports.invokeLambdaServico = function (servico, funcao, payload, callback) {
     var fnName = exports.montaNomeFuncao(servico, funcao);
     var params = {
         FunctionName: fnName,
@@ -33,7 +33,7 @@ exports.invokeLambdaServico = function(servico, funcao, payload, callback){
     exports.invokeLambda(params, callback);
 }
 
-exports.invokeLambdaServicoEvento = function(servico, funcao, payload, callback){
+exports.invokeLambdaServicoEvento = function (servico, funcao, payload, callback) {
     var fnName = exports.montaNomeFuncao(servico, funcao);
     var params = {
         FunctionName: fnName,
@@ -59,18 +59,18 @@ function getLambdaInfo(fnName) {
     var stage = fnNameSplited[3];
     if (stage == "development") stage = 'dev';
 
-    if(process.env.NOVOERP_LAMBDA_FOLDER){
+    if (process.env.NOVOERP_LAMBDA_FOLDER) {
         cwd = path.join(process.env.NOVOERP_LAMBDA_FOLDER, tipo, fnFolder);
-    }else if (process.env.IS_LOCAL) { //Chamada de lambda
-        if(process.env.IS_ROOT){
-            if(tipo === 'java'){
+    } else if (process.env.IS_LOCAL) { //Chamada de lambda
+        if (process.env.IS_ROOT) {
+            if (tipo === 'java') {
                 cwd = path.join(process.cwd(), '..', '..', tipo, fnFolder);
-            }else{
-                cwd = process.cwd();    
-            }   
-        }else{
+            } else {
+                cwd = process.cwd();
+            }
+        } else {
             cwd = path.join(process.cwd(), '..');
-            if(path.basename(cwd) == "node" || path.basename(cwd) == "java"){
+            if (path.basename(cwd) == "node" || path.basename(cwd) == "java") {
                 cwd = process.cwd();
             }
         }
@@ -119,37 +119,37 @@ function lambdaLocalNode(params, info, callback) {
 
     var paramsExec = ['invoke', 'local', '-f', info.name, '--stage', info.stage, '--data', params.Payload];
     console.log("Executando lambda local: " + path.join(info.cwd, "sls") + " " + paramsExec.join(" "));
-    
-    if(callback === undefined){
-        callback = function(){};
+
+    if (callback === undefined) {
+        callback = function () { };
     }
 
     const child = execFile('sls', paramsExec, {
         cwd: info.cwd,
         env: process.env,
-        maxBuffer: 1024 * 500 
+        maxBuffer: 1024 * 500
     }, (error, stdout, stderr) => {
         if (error) {
-            var indexRetOffline = (stdout||"").indexOf("---RETORNOOFFLINE---");
-            if(indexRetOffline > -1){
+            var indexRetOffline = (stdout || "").indexOf("---RETORNOOFFLINE---");
+            if (indexRetOffline > -1) {
                 var split = stdout.split("---RETORNOOFFLINE---")[1];
                 if (!split) {
                     split = "";
                 }
                 var json = split.trim();
-                if(json){
+                if (json) {
                     json = json.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, "");
                     var response = JSON.parse(json);
-                    if(response.errorMessage && typeof response.errorMessage == "object"){
+                    if (response.errorMessage && typeof response.errorMessage == "object") {
                         response = response.errorMessage;
                     }
                     return callback(new Error(response.message || response.errorMessage));
-                }else{
+                } else {
                     return callback(new Error(stderr));
-                } 
-            }else{
+                }
+            } else {
                 return callback(new Error(stderr));
-            }   
+            }
         }
         try {
             var split = stdout.split("---RETORNOOFFLINE---")[1];
@@ -173,8 +173,8 @@ function lambdaLocalNode(params, info, callback) {
 //java -cp target/api-dev.jar avanco.lambda.nfe.LambdaFunctionHandler
 function lambdaLocalJava(params, info, callback) {
 
-    if(callback === undefined){
-        callback = function(){};
+    if (callback === undefined) {
+        callback = function () { };
     }
 
     async.waterfall([
@@ -192,7 +192,7 @@ function lambdaLocalJava(params, info, callback) {
                 var paramsExec = ['package'];
                 const child = execFile('mvn', paramsExec, {
                     cwd: info.cwd,
-                    maxBuffer: 1024 * 500 
+                    maxBuffer: 1024 * 500
                 }, (error, stdout, stderr) => {
                     if (error) {
                         return next(error);
@@ -207,30 +207,30 @@ function lambdaLocalJava(params, info, callback) {
 
             var paramsExec = ['-cp', "target/" + info.name + ".jar", classHandler, params.Payload];
             var exec = "java";
-            if (info.stage == "qualidade" && fs.existsSync("/u/java/jdk1.8/bin/"+exec)){
-                exec = "/u/java/jdk1.8/bin/"+exec;
+            if (info.stage == "qualidade" && fs.existsSync("/u/java/jdk1.8/bin/" + exec)) {
+                exec = "/u/java/jdk1.8/bin/" + exec;
             }
             console.log("Executando lambda local: " + path.join(info.cwd, exec) + " " + paramsExec.join(" "));
 
             var env = JSON.parse(JSON.stringify(process.env));
             var envFile;
-            
-            if(fs.existsSync(path.join(info.cwd, "../../config.js"))){
+
+            if (fs.existsSync(path.join(info.cwd, "../../config.js"))) {
                 envFile = require(path.join(info.cwd, "../../config.js"))(info.stage);
                 _.assign(env, envFile.env);
-            }else if(fs.existsSync(path.join(info.cwd, "../../env.js"))){
+            } else if (fs.existsSync(path.join(info.cwd, "../../env.js"))) {
                 envFile = require(path.join(info.cwd, "../../env.js"))(info.stage);
                 _.assign(env, envFile);
-            }else{
+            } else {
                 return next(new Error('Arquivo de configuração da lambda (config.js|env.js) não encontrado!'));
-            }          
+            }
 
             _.assign(env, envFile.env);
 
             const child = execFile(exec, paramsExec, {
                 cwd: info.cwd,
                 env: env,
-                maxBuffer: 1024 * 500 
+                maxBuffer: 1024 * 500
             }, (error, stdout, stderr) => {
                 if (error) {
                     return callback(new Error(stderr));
