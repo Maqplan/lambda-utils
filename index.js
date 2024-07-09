@@ -117,7 +117,7 @@ function lambdaLocal(params, callback) {
 
 function lambdaLocalNode(params, info, callback) {
 
-    var paramsExec = ['invoke', 'local', '-f', info.name, '--stage', info.stage, '--data', params.Payload];
+    var paramsExec = ['invoke', 'local', '-f', info.name, '--stage', info.stage, '--data', params.Payload, `--param="env=${AMBIENTE}"`];
     console.log("Executando lambda local: " + path.join(info.cwd, "sls") + " " + paramsExec.join(" "));
 
     if (callback === undefined) {
