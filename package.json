@@ -1,5 +1,5 @@
 {
-  "name": "lambda-utils",
+  "name": "@maqplan/lambda-utils",
   "version": "1.1.1",
   "description": "Funções para serem utilizadas nas lambdas do NovoERP",
   "main": "index.js",
