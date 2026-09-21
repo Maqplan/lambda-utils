@@ -1,6 +1,5 @@
-const AWS = require('aws-sdk');
-AWS.config.region = 'us-east-1';
-const lambda = new AWS.Lambda();
+const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
+const lambda = new LambdaClient({ region: 'us-east-1' });
 const execFile = require('child_process').execFile;
 const path = require('path');
 const _ = require('lodash');
@@ -47,7 +46,14 @@ exports.invokeLambda = function (params, callback) {
     if (process.env.IS_LOCAL || process.env.LOCAL_LAMBDA || AMBIENTE === "development" || AMBIENTE === "qualidade" || AMBIENTE === "dev") {
         return lambdaLocal(params, callback);
     }
-    return lambda.invoke(params, callback);
+    return lambda.send(new InvokeCommand(params)).then(function (data) {
+        if (data.Payload) {
+            data.Payload = Buffer.from(data.Payload);
+        }
+        callback(null, data);
+    }, function (err) {
+        callback(err);
+    });
 }
 
 function getLambdaInfo(fnName) {
