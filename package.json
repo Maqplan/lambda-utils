@@ -1,6 +1,6 @@
 {
   "name": "@maqplan/lambda-utils",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Funções para serem utilizadas nas lambdas do NovoERP",
   "main": "index.js",
   "engines": {
@@ -14,7 +14,6 @@
   "dependencies": {
     "@aws-sdk/client-lambda": "^3.1136.0",
     "async": "^2.4.1",
-    "js-yaml": "^3.8.4",
-    "lodash": "^4.17.10"
+    "js-yaml": "^3.8.4"
   }
 }
