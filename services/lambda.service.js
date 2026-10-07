@@ -8,9 +8,9 @@
  * assim o index.js e os consumidores não mudam entre as versões, evitando conflitos de merge.
  *
  * Contrato:
- *   invoke(params) -> Promise<{ Payload?: Buffer, FunctionError?: string, StatusCode?: number }>
+ *   invoke(params) -> Promise<{ Payload?: string, FunctionError?: string, StatusCode?: number }>
  *   - params: { FunctionName, Payload (string), InvocationType? }
- *   - Payload de retorno é SEMPRE um Buffer (ou undefined), independente do SDK.
+ *   - Payload de retorno é SEMPRE uma string (ou undefined), independente do SDK.
  */
 
 const REGION = 'us-east-1';
@@ -27,11 +27,13 @@ function getClient() {
 }
 
 // Normaliza a resposta do SDK v2 para o contrato comum.
+// O Payload do SDK (Buffer no v2, Uint8Array no v3) é convertido para string (utf-8),
+// mantendo o contrato comum entre as linhas 1.x/2.x e os consumidores que tratam XML/JSON como texto.
 function normalizarResposta(data) {
     return {
         StatusCode: data.StatusCode,
         FunctionError: data.FunctionError,
-        Payload: data.Payload != null ? Buffer.from(data.Payload) : undefined,
+        Payload: data.Payload != null ? Buffer.from(data.Payload).toString() : undefined,
     };
 }
 
