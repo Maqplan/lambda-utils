@@ -1,11 +1,10 @@
-const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
 const execFile = require('child_process').execFile;
 const path = require('path');
 const yaml = require('js-yaml');
 const fs = require('fs');
 const async = require('async');
 
-const lambda = new LambdaClient({ region: 'us-east-1' });
+const lambdaService = require('./services/lambda.service');
 
 const AMBIENTE = (process.env.LAMBDA_ENV || process.env.NODE_ENV || process.env.STAGE || '').replace('development', 'dev');
 
@@ -42,10 +41,7 @@ exports.invokeLambda = (params, callback) => {
     if (process.env.IS_LOCAL || process.env.LOCAL_LAMBDA || AMBIENTE === 'development' || AMBIENTE === 'qualidade' || AMBIENTE === 'dev') {
         return lambdaLocal(params, callback);
     }
-    return lambda.send(new InvokeCommand(params)).then((data) => {
-        if (data.Payload) {
-            data.Payload = Buffer.from(data.Payload);
-        }
+    return lambdaService.invoke(params).then((data) => {
         callback(null, data);
     }, (err) => {
         callback(err);
