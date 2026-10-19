@@ -100,7 +100,10 @@ function extrairRetornoOffline(stdout) {
 }
 
 // Invoca uma lambda Node localmente via `sls invoke local`.
-// Contrato: invoke(info, payload) -> Promise<{ Payload: object }>
+// Contrato: invoke(info, payload) -> Promise<{ Payload: string }>
+// O Payload é SEMPRE uma string (JSON/texto cru), igual ao serviço SDK e ao local-java,
+// para os consumidores (ex.: tnfe-api) tratarem a resposta como texto sem precisar saber
+// de onde a invocação veio.
 exports.invoke = (info, payload) => new Promise((resolve, reject) => {
     const comandoExec = montaComandoSlsLocal(info, payload);
     console.log(`Executando lambda local: ${comandoExec.descricao}`);
@@ -123,13 +126,10 @@ exports.invoke = (info, payload) => new Promise((resolve, reject) => {
             return reject(new Error(response.message || response.errorMessage));
         }
 
-        try {
-            const json = extrairRetornoOffline(stdout) || '{}';
-            return resolve({ Payload: JSON.parse(json) });
-        } catch (e) {
-            e.message = `Erro ao fazer parse na resposta: ${e.message}\n\nResposta: ${stdout}`;
-            return reject(e);
-        }
+        const json = extrairRetornoOffline(stdout) || '{}';
+        // Retorna a string JSON crua (sem reserializar) para manter o contrato de Payload: string.
+        // extrairRetornoOffline só retorna candidatos que já passaram por JSON.parse, então o texto é válido.
+        return resolve({ Payload: json });
     });
 });
 
