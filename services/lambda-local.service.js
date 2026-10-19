@@ -7,49 +7,64 @@ const javaService = require('./lambda-local-java.service');
 
 const AMBIENTE = (process.env.LAMBDA_ENV || process.env.NODE_ENV || process.env.STAGE || '').replace('development', 'dev');
 
-// Resolve a pasta/stage/nome/tipo da lambda a partir do nome da função
-// (ex.: "novoerp-node-funcoes-production-sintegra").
-function getLambdaInfo(fnName) {
-    const fnNameSplited = fnName.split('-');
-    const tipo = fnNameSplited[1];
-    const fnFolder = fnNameSplited[2];
-    let stage = fnNameSplited[3];
-    if (stage === 'development') stage = 'dev';
+// Stages do mapa `custom.scope` dos serverless.yml, usados como âncora para separar
+// pasta e função no nome da lambda.
+const STAGES_CONHECIDOS = ['dev', 'qas', 'production', 'pecarara'];
 
-    let cwd;
-    if (process.env.NOVOERP_LAMBDA_FOLDER) {
-        cwd = path.join(process.env.NOVOERP_LAMBDA_FOLDER, tipo, fnFolder);
-    } else if (process.env.IS_LOCAL) { // Chamada de lambda
-        if (process.env.IS_ROOT) {
-            if (tipo === 'java') {
-                cwd = path.join(process.cwd(), '..', '..', tipo, fnFolder);
-            } else {
-                cwd = process.cwd();
-            }
-        } else {
-            cwd = path.join(process.cwd(), '..');
-            if (path.basename(cwd) === 'node' || path.basename(cwd) === 'java') {
-                cwd = process.cwd();
-            }
-        }
-    } else if (AMBIENTE === 'development' || AMBIENTE === 'dev' || process.env.LOCAL_LAMBDA === 'true') {
-        cwd = path.join(process.cwd(), '..', 'lambda', tipo, fnFolder);
-    } else {
-        cwd = path.join(process.cwd(), 'lambda', tipo, fnFolder);
+// O nome da lambda segue `novoerp-<tipo>-<pasta...>-<stage>-<funcao...>` (ver montaNomeFuncao).
+// Pasta e função podem conter hifens, então o stage é o único índice confiável.
+function encontrarIndiceStage(segmentos) {
+    for (let i = 3; i < segmentos.length; i++) {
+        if (STAGES_CONHECIDOS.includes(segmentos[i])) return i;
     }
+    return 3;
+}
 
-    fnNameSplited.splice(0, 4);
+// A pasta física ignora um sufixo de versão do serviço (ex.: "nfe4-v2" -> pasta "nfe4").
+function resolverPasta(segmentosPasta) {
+    const segmentos = [...segmentosPasta];
+    if (segmentos.length > 1 && /^v\d+$/.test(segmentos[segmentos.length - 1])) {
+        segmentos.pop();
+    }
+    return segmentos.join('-');
+}
+
+function resolverCwd(tipo, fnFolder) {
+    if (process.env.NOVOERP_LAMBDA_FOLDER) {
+        return path.join(process.env.NOVOERP_LAMBDA_FOLDER, tipo, fnFolder);
+    }
+    if (process.env.IS_LOCAL) {
+        if (process.env.IS_ROOT) {
+            if (tipo === 'java') return path.join(process.cwd(), '..', '..', tipo, fnFolder);
+            return process.cwd();
+        }
+        const pai = path.join(process.cwd(), '..');
+        if (path.basename(pai) === 'node' || path.basename(pai) === 'java') return process.cwd();
+        return pai;
+    }
+    if (AMBIENTE === 'dev' || process.env.LOCAL_LAMBDA === 'true') {
+        return path.join(process.cwd(), '..', 'lambda', tipo, fnFolder);
+    }
+    return path.join(process.cwd(), 'lambda', tipo, fnFolder);
+}
+
+function getLambdaInfo(fnName) {
+    const segmentos = fnName.split('-');
+    const tipo = segmentos[1];
+    const stageIndex = encontrarIndiceStage(segmentos);
+
+    const fnFolder = resolverPasta(segmentos.slice(2, stageIndex));
+    const stage = segmentos[stageIndex];
+    const name = segmentos.slice(stageIndex + 1).join('-');
 
     return {
-        cwd,
+        cwd: resolverCwd(tipo, fnFolder),
         stage,
-        name: fnNameSplited.join('-'),
+        name,
         tipo,
     };
 }
 
-// Invoca a lambda localmente, roteando por tipo (node/java).
-// Contrato: invoke(params) -> Promise<{ Payload }>
 exports.invoke = (params) => {
     const info = getLambdaInfo(params.FunctionName);
 
