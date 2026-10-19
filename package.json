@@ -1,13 +1,16 @@
 {
   "name": "@maqplan/lambda-utils",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Funções para serem utilizadas nas lambdas do NovoERP",
   "main": "index.js",
+  "publishConfig": {
+    "registry": "https://pkgs.dev.azure.com/apiweb/_packaging/apiweb/npm/registry/"
+  },
   "engines": {
     "node": ">=14.21.3"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test"
   },
   "author": "Michael Fagundes Marques <michael.fagundes@avancoinfo.com.br>",
   "license": "ISC",
