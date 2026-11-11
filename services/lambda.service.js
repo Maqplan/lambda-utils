@@ -13,7 +13,7 @@
  *   - Payload de retorno é SEMPRE uma string (ou undefined), independente do SDK.
  */
 
-const REGION = 'us-east-1';
+const { REGION, resolverFunctionName } = require('./lambda-arn');
 
 // Carregamento sob demanda (lazy): o pacote continua carregável mesmo quando só o modo
 // local é usado e o SDK não é necessário.
@@ -39,4 +39,8 @@ function normalizarResposta(data) {
     };
 }
 
-exports.invoke = (params) => getClient().send(new InvokeCommand(params)).then(normalizarResposta);
+// O FunctionName é convertido em ARN da conta das lambdas quando LAMBDA_ACCOUNT_ID está definido.
+exports.invoke = (params) =>
+    getClient()
+        .send(new InvokeCommand({ ...params, FunctionName: resolverFunctionName(params.FunctionName) }))
+        .then(normalizarResposta);
