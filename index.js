@@ -1,5 +1,6 @@
 const lambdaService = require('./services/lambda.service');
 const lambdaLocalService = require('./services/lambda-local.service');
+const { resolverFunctionName } = require('./services/lambda-arn');
 
 const AMBIENTE = (process.env.LAMBDA_ENV || process.env.NODE_ENV || process.env.STAGE || '').replace('development', 'dev');
 
@@ -16,6 +17,10 @@ exports.init = (event, context, waitEventLoop) => {
     context.callbackWaitsForEmptyEventLoop = !!waitEventLoop;
     global.lambdaFunctionName = context.functionName;
 };
+
+// Converte o nome simples em ARN da conta das lambdas (LAMBDA_ACCOUNT_ID), para quem invoca
+// a lambda direto pelo SDK sem passar por invokeLambda.
+exports.resolverFunctionName = resolverFunctionName;
 
 exports.montaNomeFuncao = (servico, funcao, ambiente) => `${servico}-${ambiente || AMBIENTE}-${funcao}`;
 
